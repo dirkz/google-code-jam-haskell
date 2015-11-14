@@ -16,7 +16,7 @@ import Data.List (sort, sortBy, foldl')
 
 type Dict = [String]
 
-type Grammar = [S.Set Char]
+type Token = S.Set Char
 
 data TestCase = TestCase
                   Dict
@@ -27,20 +27,20 @@ data TestCase = TestCase
 
 chars = ['a'..'z']
 
-solveCase c@(TestCase words dict w) = show c
+solveCase c@(TestCase words w) = show $ solve c
 
-mkTokens :: Int -> [String] -> [Token]
-mkTokens _ = map (S.fromList) . transpose
-
-transpose :: [[a]] -> [[a]]
-transpose ([]:_) = []
-transpose xs = map head xs : transpose (map tail xs)
-
-cp :: [[a]] -> [[a]]
-cp [] = [[]]
-cp (xs:xss) = [x:ys | x <- xs, ys <- yss]
+solve c@(TestCase words w) = length $ filter (==True) $ map (matches tokens) words
   where
-    yss = cp xss
+    parsedTokens = parse parseTokens "fn: solve" w
+    tokens = case parsedTokens of
+               Left s -> error $ show s
+               Right ts -> ts
+
+matches :: [Token] -> String -> Bool
+matches ts s = and $ zipWith matcher ts s
+  where
+    matcher :: S.Set Char -> Char -> Bool
+    matcher set c = S.member c set
 
 -- Parser (variable part)
 
@@ -73,10 +73,10 @@ parseWords = do
 parseWord :: GenParser Char st String
 parseWord = many1 (oneOf ['a'..'z'] <|> oneOf "()")
 
-parseSingleCase words dict = do
+parseSingleCase words = do
   w <- parseWord
   eol
-  return $ TestCase words dict w
+  return $ TestCase words w
 
 eol :: GenParser Char st ()
 eol = char '\n' >> return ()
@@ -122,8 +122,7 @@ parseTestCases = do
   numCases <- parseInt
   eol
   words <- count numWords parseWords
-  let tokens = mkTokens numTokens words
-  cases <- count numCases (parseSingleCase (S.fromList words) tokens)
+  cases <- count numCases (parseSingleCase words)
   return $ TestInput numCases numWords numTokens cases
 
 parseCases :: String -> Either ParseError TestInput
