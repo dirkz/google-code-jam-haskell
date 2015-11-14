@@ -5,5 +5,5 @@ Haskell framework and solutions for some google code jam problems
 Examples:
 
 ```
-stack runghc src/Milkshakes.hs < ~/Downloads/B-large-practice.in | tee ~/Downloads/B-large-practice.out
+stack runghc -- -isrc src/MinimumScalarProduct.hs < ~/Downloads/A-small-practice.in | tee ~/Downloads/A-small-practice.out
 ```
