@@ -10,7 +10,7 @@ import Debug.Trace (trace)
 
 -- variable imports
 import qualified Data.Set as S
-import Data.List (sort, sortBy, foldl', inits)
+import Data.List (group, sort, sortBy)
 
 -- variable Data
 
@@ -22,25 +22,63 @@ data TestCase = TestCase
 
 -- variable implementation
 
-solveCase c@(TestCase numRows numKs rows) = show c
+solveCase c@(TestCase numRows numKs rows) = solve c
 
-shiftRight' :: String -> (Int, String)
-shiftRight' = foldr fn (0, [])
-  where
-    fn '.' (n, xs) = (n + 1, xs)
-    fn ch (n, xs) = (n, ch:xs)
+solve c@(TestCase numRows numKs rows) = final $
+  sortBy desc $ map head $ filter (pLength numKs) $ concat $ map group $ allRows numRows $ rotate rows
 
-shiftRight :: String -> String
-shiftRight s = pad '.' n xs
+allRows k rs = concat $ zipWith ($) [transpose, diagonals k, id] (repeat rs)
+
+final xs
+  | pR && pB = "Both"
+  | pR = "Red"
+  | pB = "Blue"
+  | otherwise = "Neither"
   where
-    (n, xs) = shiftRight' s
+    pR = any (=='R') xs
+    pB = any (=='B') xs
+
+gravityRight rows = map (shiftRight '.') rows
+
+rotate = gravityRight
+
+pLength k xs = length xs >= k
+
+asc x y
+  | x < y = LT
+  | x > y = GT
+  | otherwise = EQ
+
+desc x = rev . asc x
+  where
+    rev GT = LT
+    rev LT = GT
+    rev x = x
+
+transpose :: [[a]] -> [[a]]
+transpose (xs:[]) = [[x] | x <- xs]
+transpose (xs:xss) = zipWith (:) xs (transpose xss)
+
+shiftRight' :: Eq a => a -> [a] -> (Int, [a])
+shiftRight' x = foldr fn (0, [])
+  where
+    fn ch (n, xs)
+      | ch == x = (n + 1, xs)
+      | otherwise = (n, ch:xs)
+
+shiftRight :: Eq a => a -> [a] -> [a]
+shiftRight x s = pad x n xs
+  where
+    (n, xs) = shiftRight' x s
 
 pad :: a -> Int -> [a] -> [a]
 pad _ 0 s = s
 pad ch n s = pad ch (n-1) $ ch:s
 
 starters :: Int -> [(Int, Int)]
-starters n = [(x, 0) | x <- [0..n-1]]
+starters n = concat $ [[(x, 0) | x <- [0..n-1]]
+                      , [(n-1, y) | y <- [1..n-1]]
+                      , [(0, y) | y <- [1..n-1]]]
 
 indices :: ((Int, Int) -> (Int, Int)) -> Int -> (Int, Int) -> [(Int, Int)]
 indices fn n start = takeWhile check $ iterate fn start
@@ -56,10 +94,12 @@ indices2 = indices fn
     fn (r, c) = (r + 1, c + 1)
 
 diagIndices :: Int -> [[(Int, Int)]]
-diagIndices n = d1 ++ d2
+diagIndices n = filter test $ concat [d1, d2]
   where
     d1 = map (indices1 n) (starters n)
     d2 = map (indices2 n) (starters n)
+    test (x:[]) = False
+    test _ = True
 
 getNm :: [[a]] -> (Int, Int) -> a
 getNm xss (r, c) = (xss !! r) !! c
@@ -70,8 +110,13 @@ diagonals n xss = map (map (getNm xss)) $ diagIndices n
 test50 :: [[Int]]
 test50 = replicate 50 [1..50]
 
-test5 :: [[Int]]
-test5 = replicate 5 [1..5]
+test4 :: [[Int]]
+test4 = groupN 4 [1..16]
+
+groupN _ [] = []
+groupN n xs = as : groupN n bs
+  where
+    (as, bs) = splitAt n xs
 
 -- Parser (variable part)
 
